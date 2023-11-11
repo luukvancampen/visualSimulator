@@ -3,11 +3,11 @@ package com.example.visualsimulator;
 import java.util.HashSet;
 import java.util.UUID;
 
-public class Packet implements Cloneable{
+public class LinkLayerPacket implements Cloneable{
     PacketType type;
     double[] originCoordinate;
-    String originID;
-    String destination;
+    String macSource;
+    String macDestination;
     // this HashSet will contain all nodes that have received this particular packet.
     // This is required to make sure that the network does not send a particular
     // packet to a node twice.
@@ -16,7 +16,7 @@ public class Packet implements Cloneable{
     Integer localBackoff;
     Integer remoteBackoff;
     Integer sequenceNumber;
-    String data;
+    NetworkLayerPacket data;
 
     @Override
     public int hashCode() {
@@ -25,11 +25,11 @@ public class Packet implements Cloneable{
         return result;
     }
 
-    public Packet(PacketType type, double[] originCoordinate, String originID, String destination, HashSet<Node> received, Integer localBackoff, Integer remoteBackoff, Integer sequenceNumber, String data) {
+    public LinkLayerPacket(PacketType type, double[] originCoordinate, String macSource, String macDestination, HashSet<Node> received, Integer localBackoff, Integer remoteBackoff, Integer sequenceNumber, NetworkLayerPacket data) {
         this.type = type;
         this.originCoordinate = originCoordinate;
-        this.originID = originID;
-        this.destination = destination;
+        this.macSource = macSource;
+        this.macDestination = macDestination;
         this.received = received;
         this.localBackoff = localBackoff;
         this.remoteBackoff = remoteBackoff;
@@ -37,11 +37,11 @@ public class Packet implements Cloneable{
         this.data = data;
     }
 
-    public Packet(PacketType type, double[] originCoordinate, String originID, String destination, HashSet<Node> received, Integer localBackoff, Integer remoteBackoff, Integer sequenceNumber) {
+    public LinkLayerPacket(PacketType type, double[] originCoordinate, String macSource, String macDestination, HashSet<Node> received, Integer localBackoff, Integer remoteBackoff, Integer sequenceNumber) {
         this.type = type;
         this.originCoordinate = originCoordinate;
-        this.originID = originID;
-        this.destination = destination;
+        this.macSource= macSource;
+        this.macDestination = macDestination;
         this.received = received;
         this.localBackoff = localBackoff;
         this.remoteBackoff = remoteBackoff;
@@ -50,9 +50,9 @@ public class Packet implements Cloneable{
 
 
     @Override
-    public Packet clone() {
+    public LinkLayerPacket clone() {
         try {
-            return (Packet) super.clone();
+            return (LinkLayerPacket) super.clone();
         } catch (CloneNotSupportedException e) {
             throw new AssertionError();
         }

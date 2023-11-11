@@ -22,13 +22,14 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.util.Duration;
 
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 public class HelloApplication extends Application {
 
+    boolean simulationRunning = false;
+    List<Thread> simulationThreads = new LinkedList<>();
     private static final Duration ANIMATION_DURATION = Duration.millis(10);
     HashMap<String, Integer> framecountMap = new HashMap<>();
     HashMap<String, Circle> circleMap = new HashMap<>();
@@ -41,6 +42,8 @@ public class HelloApplication extends Application {
     Canvas canvas = null;
     Pane pane = null;
 
+
+
     @Override
     public void start(Stage stage)  {
         VBox container = new VBox();
@@ -51,17 +54,7 @@ public class HelloApplication extends Application {
         stage.setWidth(800);
         stage.setHeight(600);
 
-        HBox numberOfNodesHBox = new HBox();
-        Text numberOfNodesText = new Text("Number of nodes: ");
-        TextField numberOfNodesTextField = new TextField("0");
-        numberOfNodesTextField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (!newValue.matches("\\d*")) {
-                numberOfNodesTextField.setText(newValue.replaceAll("\\D", ""));
-            }
-        });
 
-        numberOfNodesHBox.getChildren().addAll(numberOfNodesText, numberOfNodesTextField);
-        container.getChildren().add(numberOfNodesHBox);
 
         ToggleGroup toggleGroup = new ToggleGroup();
         HBox radioHBox = new HBox();
@@ -74,13 +67,16 @@ public class HelloApplication extends Application {
         canvas = new Canvas(400, 300);
 
         radioHBox.getChildren().addAll(randomRadio, manualRadio);
+        VBox paneBox = new VBox();
 
         pane = new Pane();
+        pane.setMinSize(600, 600);
+        paneBox.getChildren().add(pane);
+
 
         EventHandler<ActionEvent> radioHandler = actionEvent -> {
             RadioButton button = (RadioButton) actionEvent.getSource();
             String option = button.getText();
-            Integer numberOfNodes = Integer.parseInt(numberOfNodesTextField.getText());
             if (option.equals("Manual")) {
                 nodeList.clear();
                 Button addNodeButton = new Button("Add node");
@@ -93,24 +89,125 @@ public class HelloApplication extends Application {
 
             } else {
                 nodeList.clear();
+                HBox numberOfNodesHBox = new HBox();
+                Text numberOfNodesText = new Text("Number of nodes: ");
+                TextField numberOfNodesTextField = new TextField("0");
+                numberOfNodesTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+                    if (!newValue.matches("\\d*")) {
+                        numberOfNodesTextField.setText(newValue.replaceAll("\\D", ""));
+                    }
+                    if (!newValue.equals("")) {
+                        nodeList.clear();
+                        pane.getChildren().clear();
+                        nodeList.clear();
+                        Integer numberOfNodes = Integer.parseInt(numberOfNodesTextField.getText());
+                        for (int i = 0; i < numberOfNodes; i++) {
+                            double[] coordinate = {
+                                    ThreadLocalRandom.current().nextInt(20, 200),
+                                    ThreadLocalRandom.current().nextInt(20, 200)
+                            };
+
+                            double[] newCoordinate = {
+                                    getRandomNumber(200, 600),
+                                    getRandomNumber(200, 600)
+                            };
+                            double[] fixedCoord = {100 * (i + 2), 100 * (i + 2)};
+//                            Node node = new Node(getNthLetter(i + 1), ThreadLocalRandom.current().nextInt(50, 100), coordinate, network);
+                            Node node = new Node(getNthLetter(i + 1), 200, newCoordinate, network);
+                            nodeList.add(node);
+                            drawNodeNew(node, pane);
+                        }
+                    }
+                });
+
+                HBox simulationButtonBox = new HBox();
+                Text simulationStarStopText = new Text("Random simulation: ");
+                Button startRandomSimulationButton = new Button("Start");
+                Button stopRandomSimulationButton = new Button("Stop");
+
+                startRandomSimulationButton.setOnAction(startRandomSimulation);
+                stopRandomSimulationButton.setOnAction(stopRandomSimulation);
+
+                simulationButtonBox.getChildren().addAll(simulationStarStopText, startRandomSimulationButton, stopRandomSimulationButton);
+
+
+
+                paneBox.getChildren().add(simulationButtonBox);
+                numberOfNodesHBox.getChildren().addAll(numberOfNodesText, numberOfNodesTextField);
+                container.getChildren().add(numberOfNodesHBox);
             }
             System.out.println("Selected " + option);
         };
 
-        Button startSimulationButton = new Button("Start simulation");
-        EventHandler<ActionEvent> startSimulationHandler = actionEvent -> {
-            runSimulation();
-        };
-        startSimulationButton.setOnAction(startSimulationHandler);
+
 
         randomRadio.setOnAction(radioHandler);
         manualRadio.setOnAction(radioHandler);
         container.getChildren().add(radioHBox);
         container.getChildren().add(nodeVBox);
-        container.getChildren().add(pane);
-        container.getChildren().add(startSimulationButton);
+        container.getChildren().add(paneBox);
+//        container.getChildren().add(startSimulationButton);
 
         stage.show();
+    }
+
+    public int getRandomNumber(int min, int max) {
+        return (int) ((Math.random() * (max - min)) + min);
+    }
+
+    EventHandler<ActionEvent> stopRandomSimulation = actionEvent -> {
+        simulationRunning = false;
+        for (Thread thread : simulationThreads) {
+            thread.interrupt();
+        }
+        for (Node node : nodeList) {
+            node.reset();
+        };
+    };
+
+    EventHandler<ActionEvent> startRandomSimulation = actionEvent -> {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (Node node : nodeList) {
+                    Thread thread = new Thread(node);
+                    simulationThreads.add(thread);
+                    thread.start();
+                }
+                simulationRunning = true;
+                while (simulationRunning) {
+                    Integer index = ThreadLocalRandom.current().nextInt(0, nodeList.size());
+                    Node sendNode = nodeList.get(index);
+                    // Get random node in range....
+                    Optional<Node> receiver = getRandomNodeInRange(sendNode);
+                    if (receiver.isPresent()) {
+                        Node r = receiver.get();
+                        submitTask(sendNode, r.id, "Hello!", ThreadLocalRandom.current().nextInt(10, 500));
+                        try {
+                            Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                }
+            }
+        }).start();
+    };
+
+    public Optional<Node> getRandomNodeInRange(Node sender) {
+        List<Node> inRange = nodeList.stream().filter(n -> network.nodeWithinNodeRange(sender, n) && !Objects.equals(sender.id, n.id)).toList();
+        if (!inRange.isEmpty()) {
+            Integer randomIndex = ThreadLocalRandom.current().nextInt(0, inRange.size());
+            return Optional.of(inRange.get(randomIndex));
+        }
+        return Optional.empty();
+    }
+
+    public static String getNthLetter(int n) {
+        int asciiValue = 'A' + n - 1;
+        String nthLetter = Character.toString((char) asciiValue);
+        return nthLetter;
     }
 
     static void submitTask(Node node, String receiver, String data, Integer delay) {
@@ -197,8 +294,6 @@ public class HelloApplication extends Application {
         text.setLayoutY(n.coordinate[1]);
         pane.getChildren().add(text);
 
-
-
         Timeline timeline = new Timeline();
 
         for (int frame = 0; frame <= 100; frame++) {
@@ -219,7 +314,12 @@ public class HelloApplication extends Application {
         }
         timeline.setCycleCount(1);
         timeline.play();
-        EventHandler<ActionEvent> onFinished = (EventHandler) event -> pane.getChildren().remove(text);
+//        EventHandler onFinished = event -> {pane.getChildren().remove(animationBasis);};
+//        timeline.setOnFinished(onFinished);
+        EventHandler onFinished = event -> {
+            pane.getChildren().remove(text);
+            pane.getChildren().remove(animationBasis);
+        };
 
         timeline.setOnFinished(onFinished);
     }
