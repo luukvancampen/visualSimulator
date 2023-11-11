@@ -37,7 +37,7 @@ public class Network implements Runnable{
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-            System.out.println(packet.originID + " ---> " + packet.destination + ": " + packet.type.toString());
+            System.out.println(packet.macSource + " ---> " + packet.macDestination+ ": " + packet.type.toString());
             this.packets.add(packet);
         }
     }
@@ -48,7 +48,7 @@ public class Network implements Runnable{
         synchronized (this.packets) {
             for (LinkLayerPacket packet : this.packets){
                 // let a node receive a packet whenever it is in range.
-                if (!packet.received.contains(node) && nodeWithinRange(packet, node) && !Objects.equals(node.id, packet.originID)) {
+                if (!packet.received.contains(node) && nodeWithinRange(packet, node) && !Objects.equals(node.id, packet.macSource)) {
                     // Packet destined for node, make sure the node is added to the packets received list
                     packet.received.add(node);
                     // Return a deep copy of the object.
