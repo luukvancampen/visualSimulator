@@ -585,9 +585,9 @@ public class Node implements Runnable {
             processPacket(packet.piggyBack);
         }
 
-        processPacket(packet);
+        boolean mayForward = processPacket(packet);
 
-        if (packet.ipDestination != id && !packet.isPiggyBack) {
+        if (mayForward && packet.ipDestination != id && !packet.isPiggyBack) {
             packet.sourceCoordinate = coordinate;
             packet.received = new HashSet<>();
 
@@ -602,7 +602,8 @@ public class Node implements Runnable {
     }
 
     // Process a received packet.
-    private void processPacket(NetworkLayerPacket packet) {
+    // Returns true if the packet should be forwarded if applicable.
+    private boolean processPacket(NetworkLayerPacket packet) {
         if (packet.optionTypes.contains(OptionType.RouteRequest)) {
             List<String> route = new ArrayList<>();
             route.add(packet.ipSource);
@@ -616,16 +617,16 @@ public class Node implements Runnable {
                 route.add(packet.targetAddress);
                 originateRouteReply(id, packet.ipSource, route, packet.identification);
 
-                return;
+                return false;
             } else {
                 if (packet.route.contains(id)) {
-                    return;
+                    return false;
                 }
 
                 // TODO maybe blacklist
 
                 if (routeRequestInTable(packet)) {
-                    return;
+                    return false;
                 }
 
                 addRouteRequestEntry(packet);
@@ -657,7 +658,7 @@ public class Node implements Runnable {
 
                         // TODO might need to propagate RouteRequest if other options present.
 
-                        return;
+                        return false;
                     }
                 }
 
@@ -732,6 +733,8 @@ public class Node implements Runnable {
                 }
             }
         }
+
+        return true;
     }
 
     private void originateRouteReply(String sourceAddress, String destinationAddress, List<String> route,
