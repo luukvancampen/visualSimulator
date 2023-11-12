@@ -7,10 +7,7 @@ import javafx.application.Application;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.RadioButton;
-import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -60,13 +57,15 @@ public class HelloApplication extends Application {
         HBox radioHBox = new HBox();
         RadioButton randomRadio = new RadioButton("Random");
         RadioButton manualRadio = new RadioButton("Manual");
+        RadioButton fixedLongRouteRadio = new RadioButton("Fixed long route");
 
         randomRadio.setToggleGroup(toggleGroup);
         manualRadio.setToggleGroup(toggleGroup);
+        fixedLongRouteRadio.setToggleGroup(toggleGroup);
 
         canvas = new Canvas(400, 300);
 
-        radioHBox.getChildren().addAll(randomRadio, manualRadio);
+        radioHBox.getChildren().addAll(randomRadio, manualRadio, fixedLongRouteRadio);
         VBox paneBox = new VBox();
 
         pane = new Pane();
@@ -87,7 +86,7 @@ public class HelloApplication extends Application {
                 addNodeButton.setUserData(pane);
 
 
-            } else {
+            } else if (option.equals("Random")) {
                 nodeList.clear();
                 HBox numberOfNodesHBox = new HBox();
                 Text numberOfNodesText = new Text("Number of nodes: ");
@@ -135,6 +134,32 @@ public class HelloApplication extends Application {
                 paneBox.getChildren().add(simulationButtonBox);
                 numberOfNodesHBox.getChildren().addAll(numberOfNodesText, numberOfNodesTextField);
                 container.getChildren().add(numberOfNodesHBox);
+            } else {
+                System.out.println("HERE!");
+                Node n1 = new Node("A", 60, new double[]{50, 150}, network);
+                Node n2 = new Node("B", 60, new double[]{100, 150}, network);
+//                Node n3 = new Node("C", 60, new double[]{150, 150}, network);
+//                Node n4 = new Node("D", 60, new double[]{200, 150}, network);
+//                Node n5 = new Node("E", 60, new double[]{250, 150}, network);
+                Thread n1Thread = new Thread(n1);
+                Thread n2Thread = new Thread(n2);
+//                Thread n3Thread = new Thread(n3);
+//                Thread n4Thread = new Thread(n4);
+//                Thread n5Thread = new Thread(n5);
+
+                drawNodeNew(n1, pane);
+                drawNodeNew(n2, pane);
+//                drawNodeNew(n3, pane);
+//                drawNodeNew(n4, pane);
+//                drawNodeNew(n5, pane);
+
+                n1Thread.start();
+                n2Thread.start();
+//                n3Thread.start();
+//                n4Thread.start();
+//                n5Thread.start();
+
+                submitTask(n1, "B", "Wow, routing works!", 3000);
             }
             System.out.println("Selected " + option);
         };
@@ -143,6 +168,7 @@ public class HelloApplication extends Application {
 
         randomRadio.setOnAction(radioHandler);
         manualRadio.setOnAction(radioHandler);
+        fixedLongRouteRadio.setOnAction(radioHandler);
         container.getChildren().add(radioHBox);
         container.getChildren().add(nodeVBox);
         container.getChildren().add(paneBox);
