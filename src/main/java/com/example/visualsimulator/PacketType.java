@@ -6,5 +6,6 @@ public enum PacketType {
     CTS,
     RTS,
     ACK,
-    RRTS
+    RRTS,
+    BROADCAST
 }
