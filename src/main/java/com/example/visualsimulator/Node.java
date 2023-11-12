@@ -43,6 +43,8 @@ public class Node implements Runnable {
         this.coordinate = coordinate;
         this.network = network;
 
+        network.nodes.put(id, this);
+
         networkQueue = new ArrayDeque<>();
         routeCache = new HashMap<>();
         sendBuffer = new ArrayDeque<>();

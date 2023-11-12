@@ -1,15 +1,24 @@
 package com.example.visualsimulator;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.Optional;
+import javafx.util.Pair;
+import java.util.List;
+import java.util.Map;
 
 public class Network implements Runnable {
     // transmission range in meters.
     final LinkedList<LinkLayerPacket> packets = new LinkedList<>();
 
+    final Map<String, Node> nodes;
+
     public Network(HelloApplication visual) {
         this.visual = visual;
+
+        nodes = new HashMap<>();
     }
 
     HelloApplication visual;
@@ -97,5 +106,23 @@ public class Network implements Runnable {
         double distance = Math
                 .sqrt(Math.pow(Math.abs(senderX - receiverX), 2) + Math.pow(Math.abs(senderY - receiverY), 2));
         return distance < sender.transmissionRange;
+    }
+
+    List<Pair<Node, Node>> getCurrentRoutes() {
+        List<Pair<Node, Node>> routes = new ArrayList<>();
+
+        for (LinkLayerPacket packet : packets) {
+            if (packet.macDestination != "ff:ff:ff:ff:ff:ff") {
+                Node dest = nodes.get(packet.macDestination);
+
+                if (!packet.received.contains(dest)) {
+                    Node source = nodes.get(packet.macSource);
+
+                    routes.add(new Pair<Node, Node>(source, dest));
+                }
+            }
+        }
+
+        return routes;
     }
 }
