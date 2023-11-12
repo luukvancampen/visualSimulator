@@ -144,43 +144,40 @@ public class HelloApplication extends Application {
                 Node n6 = new Node("F", 60, new double[]{250, 200}, network);
                 Node n7 = new Node("G", 60, new double[]{250, 250}, network);
                 Node n8 = new Node("H", 60, new double[]{200, 250}, network);
-                Node n9 = new Node("I", 60, new double[]{120, 130}, network);
-                Node n10 = new Node("J", 60, new double[]{200, 200}, network);
+                Node n9 = new Node("I", 60, new double[]{50, 200}, network);
+                Node n10 = new Node("J", 60, new double[]{50, 250}, network);
+                Node n11 = new Node("K", 60, new double[]{50, 300}, network);
+                Node n12 = new Node("L", 60, new double[]{100, 300}, network);
+                Node n13 = new Node("M", 60, new double[]{100, 350}, network);
+                Node n14 = new Node("N", 60, new double[]{100, 400}, network);
 
-                Thread n1Thread = new Thread(n1);
-                Thread n2Thread = new Thread(n2);
-                Thread n3Thread = new Thread(n3);
-                Thread n4Thread = new Thread(n4);
-                Thread n5Thread = new Thread(n5);
-                Thread n6Thread = new Thread(n6);
-                Thread n7Thread = new Thread(n7);
-                Thread n8Thread = new Thread(n8);
-                Thread n9Thread = new Thread(n9);
-                Thread n10Thread = new Thread(n10);
+                LinkedList<Node> nList = new LinkedList<>();
+                nList.add(n1);
+                nList.add(n2);
+                nList.add(n3);
+                nList.add(n4);
+                nList.add(n5);
+                nList.add(n6);
+                nList.add(n7);
+                nList.add(n8);
+                nList.add(n9);
+                nList.add(n10);
+                nList.add(n11);
+                nList.add(n12);
+                nList.add(n13);
+                nList.add(n14);
 
-                drawNodeNew(n1, pane);
-                drawNodeNew(n2, pane);
-                drawNodeNew(n3, pane);
-                drawNodeNew(n4, pane);
-                drawNodeNew(n5, pane);
-                drawNodeNew(n6, pane);
-                drawNodeNew(n7, pane);
-                drawNodeNew(n8, pane);
-                drawNodeNew(n9, pane);
-                drawNodeNew(n10, pane);
-
-                n1Thread.start();
-                n2Thread.start();
-                n3Thread.start();
-                n4Thread.start();
-                n5Thread.start();
-                n6Thread.start();
-                n7Thread.start();
-                n8Thread.start();
-                n9Thread.start();
-                n10Thread.start();
+                for (Node n : nList) {
+                    Thread nThread = new Thread(n);
+                    nThread.start();
+                    drawNodeNew(n, pane);
+                }
 
                 submitTask(n1, "H", "Wow, routing works!", 3000);
+//                submitTask(n1, "H", "Wow, routing works!", 15000);
+//                submitTask(n1, "H", "Wow, routing works!", 25000);
+//                submitTask(n1, "H", "Wow, routing works!", 35000);
+//                submitTask(n1, "H", "Wow, routing works!", 45000);
             }
             System.out.println("Selected " + option);
         };

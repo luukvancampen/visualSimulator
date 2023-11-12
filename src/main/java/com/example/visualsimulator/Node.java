@@ -38,6 +38,10 @@ public class Node implements Runnable {
     private final List<GratituousReplyTableEntry> gratituousReplyTable;
     private final Map<String, List<NetworkLayerPacket>> maintenanceBuffer;
 
+    public void clearCache() {
+        this.routeCache.clear();
+    }
+
     public Node(String id, double transmissionRange, double[] coordinate, Network network) {
         this.id = id;
         this.transmissionRange = transmissionRange;
@@ -120,6 +124,9 @@ public class Node implements Runnable {
                 // Bypass the mac layer, instantly pass the packet to dsrReceive.
                 return packet;
             } else {
+                System.out.println("ELSE Node " + this.id + " receives " + packet.get().type + " with address "
+                        + packet.get().macDestination + " IN STATE " + this.current_state);
+
                 macawPacket = this.macawReceive(packet.get());
             }
         }
