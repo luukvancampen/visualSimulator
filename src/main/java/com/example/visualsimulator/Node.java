@@ -75,7 +75,7 @@ public class Node implements Runnable {
                         System.out.println("Forwarding broadcast to DSR");
                         receiveDSR(maybePacket.get());
                     } else if (maybePacket.get().type == PacketType.DATA) {
-                        receiveDSR(maybePacket.get());
+                        macawReceive(maybePacket.get());
                     }
                 }
             } catch (InterruptedException e) {
@@ -93,7 +93,9 @@ public class Node implements Runnable {
         this.senderInitiated = true;
         this.dataToSend = data;
         this.communicatingWith = receiver;
-        this.sendDSR(receiver, data);
+        this.macawSend(new LinkLayerPacket(PacketType.CTS, this.coordinate, this.id, "", new HashSet<>(), this.local_backoff.getOrDefault("", 0), this.remote_backoff.getOrDefault("", 0), this.exchange_seq_number.getOrDefault("", 0)), this, success -> {});
+
+//        this.macawSend(receiver, data, success -> {});
         // this.macawSend(new LinkLayerPacket(PacketType.CTS, this.coordinate, this.id,
         // "", new HashSet<>(), this.local_backoff.getOrDefault("", 0),
         // this.remote_backoff.getOrDefault("", 0),
