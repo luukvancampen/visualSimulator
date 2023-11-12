@@ -62,7 +62,8 @@ public class Node implements Runnable {
         while (true) {
             try {
                 Thread.sleep(50);
-                Optional<LinkLayerPacket> maybePacket = this.receiveFromLinkLayer();
+                // Optional<LinkLayerPacket> maybePacket = this.receiveFromLinkLayer();
+                Optional<LinkLayerPacket> maybePacket = network.receive(this);
                 if (maybePacket.isPresent()) {
                     // this.senderInitiated = false;
                     this.receiverInitiated = false;
@@ -71,7 +72,10 @@ public class Node implements Runnable {
                             && maybePacket.get().macSource != this.id) {
                         // System.out.println("Forwarding broadcast to DSR");
                         receivedPacket = receiveDSR(maybePacket.get());
-                    } else if (maybePacket.get().type == PacketType.DATA) {
+                        // } else if (maybePacket.get().type == PacketType.DATA) {
+                        // receivedPacket = receiveDSR(maybePacket.get());
+                        // }
+                    } else {
                         receivedPacket = receiveDSR(maybePacket.get());
                     }
 
@@ -426,38 +430,41 @@ public class Node implements Runnable {
     }
 
     private void sendFromRoutingToMAC(LinkLayerPacket packet, Node node, Consumer<Boolean> callback) {
-        if (packet.macDestination == "ff:ff:ff:ff:ff:ff") {
-            macawSend(packet, node);
-            callback.accept(true);
-        } else {
-            NetworkQueueEntry networkQueueEntry = new NetworkQueueEntry();
-            networkQueueEntry.packet = packet;
+        network.send(packet);
+        callback.accept(true);
 
-            networkQueueEntry.callback = success -> {
-                networkQueue.remove();
-                callback.accept(success);
+        // if (packet.macDestination == "ff:ff:ff:ff:ff:ff") {
+        // macawSend(packet, node);
+        // callback.accept(true);
+        // } else {
+        // NetworkQueueEntry networkQueueEntry = new NetworkQueueEntry();
+        // networkQueueEntry.packet = packet;
 
-                // System.out.println("callback");
+        // networkQueueEntry.callback = success -> {
+        // networkQueue.remove();
+        // callback.accept(success);
 
-                if (!networkQueue.isEmpty()) {
-                    LinkLayerPacket queuedPacket = networkQueue.peek().packet;
+        // // System.out.println("callback");
 
-                    queuedPacket.data.print();
+        // if (!networkQueue.isEmpty()) {
+        // LinkLayerPacket queuedPacket = networkQueue.peek().packet;
 
-                    macawSend(queuedPacket, node);
-                }
-            };
+        // queuedPacket.data.print();
 
-            if (networkQueue.isEmpty()) {
-                networkQueue.add(networkQueueEntry);
+        // macawSend(queuedPacket, node);
+        // }
+        // };
 
-                packet.data.print();
+        // if (networkQueue.isEmpty()) {
+        // networkQueue.add(networkQueueEntry);
 
-                macawSend(packet, node);
-            } else {
-                networkQueue.add(networkQueueEntry);
-            }
-        }
+        // packet.data.print();
+
+        // macawSend(packet, node);
+        // } else {
+        // networkQueue.add(networkQueueEntry);
+        // }
+        // }
     }
 
     public void sendDSR(String receiver, String data) throws Exception {
@@ -630,8 +637,8 @@ public class Node implements Runnable {
             return Optional.empty();
         }
 
-        // System.out.println(id);
-        // packet.print();
+        System.out.println(id);
+        packet.print();
 
         if (packet.piggyBack != null) {
             processPacket(packet.piggyBack);
