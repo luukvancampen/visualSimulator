@@ -183,6 +183,7 @@ public class HelloApplication extends Application {
                     if (receiver.isPresent()) {
                         Node r = receiver.get();
                         submitTask(sendNode, r.id, "Hello!", ThreadLocalRandom.current().nextInt(10, 500));
+                        simulationRunning = false;
                         try {
                             Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
                         } catch (InterruptedException e) {
