@@ -144,8 +144,9 @@ public class HelloApplication extends Application {
                 Node n6 = new Node("F", 60, new double[]{250, 200}, network);
                 Node n7 = new Node("G", 60, new double[]{250, 250}, network);
                 Node n8 = new Node("H", 60, new double[]{200, 250}, network);
-                Node n9 = new Node("I", 150, new double[]{100, 100}, network);
-                Node n10 = new Node("J", 150, new double[]{200, 200}, network);
+                Node n9 = new Node("I", 60, new double[]{120, 130}, network);
+                Node n10 = new Node("J", 60, new double[]{200, 200}, network);
+
                 Thread n1Thread = new Thread(n1);
                 Thread n2Thread = new Thread(n2);
                 Thread n3Thread = new Thread(n3);

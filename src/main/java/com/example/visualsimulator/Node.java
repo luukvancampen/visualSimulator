@@ -14,6 +14,7 @@ public class Node implements Runnable {
     boolean senderInitiated = false;
     boolean receiverInitiated = false;
     String communicatingWith;
+    Consumer<Boolean> callback;
     TimerTask task;
 
     int my_backoff;
@@ -212,6 +213,7 @@ public class Node implements Runnable {
                 && (Objects.equals(packet.macDestination, this.id))) {
             // Step 6
             reassignBackoffs(packet);
+            this.callback.accept(true);
             task.cancel();
             this.current_state = state.IDLE;
         } else if (this.current_state == state.IDLE && packet.type == PacketType.RTS
@@ -334,6 +336,7 @@ public class Node implements Runnable {
     // directly calling the Network
     // send method. This has to do with the MACAW implementation.
     void macawSend(LinkLayerPacket packet, Node node, Consumer<Boolean> callback) {
+        this.callback = callback;
         if (packet.macDestination.equals("ff:ff:ff:ff:ff:ff")) {
             network.send(packet);
             return;
@@ -402,6 +405,8 @@ public class Node implements Runnable {
                         node.current_state = state.IDLE;
                         setTimer(node, 600);
                     }
+                } else if (node.current_state == state.WFACK) {
+                    node.callback.accept(false);
                 } else {
                     node.current_state = state.IDLE;
                 }
