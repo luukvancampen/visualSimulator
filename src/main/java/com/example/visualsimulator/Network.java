@@ -80,4 +80,15 @@ public class Network implements Runnable{
         double distance = Math.sqrt(Math.pow(Math.abs(packetX - nodeX), 2) + Math.pow(Math.abs(packetY - nodeY), 2));
         return distance <= node.transmissionRange;
     }
+
+    boolean nodeWithinNodeRange(Node sender, Node receiver) {
+        double senderX = sender.coordinate[0];
+        double senderY = sender.coordinate[1];
+
+        double receiverX = receiver.coordinate[0];
+        double receiverY = receiver.coordinate[1];
+
+        double distance = Math.sqrt(Math.pow(Math.abs(senderX - receiverX), 2) + Math.pow(Math.abs(senderY - receiverY), 2));
+        return distance < sender.transmissionRange;
+    }
 }

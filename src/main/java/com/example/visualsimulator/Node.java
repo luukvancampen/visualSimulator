@@ -34,6 +34,14 @@ public class Node implements Runnable {
         this.network = network;
     }
 
+
+    void reset() {
+        task.cancel();
+        this.current_state = state.IDLE;
+        this.dataToSend = "";
+//        this.senderInitiated = false;
+        this.receiverInitiated = false;
+    }
     public state getCurrent_state() {
         return this.current_state;
     }
@@ -232,7 +240,7 @@ public class Node implements Runnable {
         // Step 1 from paper
         if (this.current_state == state.IDLE) {
             this.current_state = state.CONTEND;
-            setTimer(node, 1500);
+            setTimer(node, 500);
             System.out.println("Timer set....");
         } else {
             Platform.runLater(() -> network.visual.showTransmission(node, packet.type.toString()));
