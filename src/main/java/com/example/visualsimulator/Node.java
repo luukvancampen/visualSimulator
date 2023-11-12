@@ -14,7 +14,6 @@ public class Node implements Runnable {
     boolean senderInitiated = false;
     boolean receiverInitiated = false;
     String communicatingWith;
-    Consumer<Boolean> callback;
     TimerTask task;
 
     int my_backoff;
@@ -27,10 +26,10 @@ public class Node implements Runnable {
     double[] coordinate;
     Network network;
     String dataToSend = "";
-    NetworkLayerPacket currentlySendingNLPacket;
     private state current_state = state.IDLE;
     private final HashSet<LinkLayerPacket> acknowledgesPackets = new HashSet<>();
 
+    private final Queue<NetworkQueueEntry> networkQueue;
     private final Map<String, List<RouteCacheEntry>> routeCache;
     private final ArrayDeque<SendBufferEntry> sendBuffer;
     private final Map<String, RouteRequestTableEntry> routeRequestTable;
@@ -44,6 +43,7 @@ public class Node implements Runnable {
         this.coordinate = coordinate;
         this.network = network;
 
+        networkQueue = new ArrayDeque<>();
         routeCache = new HashMap<>();
         sendBuffer = new ArrayDeque<>();
         routeRequestTable = new HashMap<>();
@@ -64,14 +64,19 @@ public class Node implements Runnable {
                 Thread.sleep(50);
                 Optional<LinkLayerPacket> maybePacket = this.receiveFromLinkLayer();
                 if (maybePacket.isPresent()) {
-//                    this.senderInitiated = false;
+                    // this.senderInitiated = false;
                     this.receiverInitiated = false;
+                    Optional<NetworkLayerPacket> receivedPacket = Optional.empty();
                     if (maybePacket.get().macDestination == "ff:ff:ff:ff:ff:ff"
                             && maybePacket.get().macSource != this.id) {
-                        System.out.println("Forwarding broadcast to DSR");
-                        receiveDSR(maybePacket.get());
+                        // System.out.println("Forwarding broadcast to DSR");
+                        receivedPacket = receiveDSR(maybePacket.get());
                     } else if (maybePacket.get().type == PacketType.DATA) {
-                        receiveDSR(maybePacket.get());
+                        receivedPacket = receiveDSR(maybePacket.get());
+                    }
+
+                    if (receivedPacket.isPresent()) {
+                        System.out.println("RECEIVED: " + receivedPacket.get().data);
                     }
                 }
             } catch (InterruptedException e) {
@@ -106,17 +111,18 @@ public class Node implements Runnable {
     Optional<LinkLayerPacket> receiveFromLinkLayer() {
         Optional<LinkLayerPacket> packet = network.receive(this);
         if (packet.isPresent()) {
-            System.out.println("Node " + this.id + " receives " + packet.get().type + " with address "
-                    + packet.get().macDestination);
+            // System.out.println("Node " + this.id + " receives " + packet.get().type + "
+            // with address "
+            // + packet.get().macDestination);
 
         }
         Optional<LinkLayerPacket> macawPacket = Optional.empty();
         if (packet.isPresent()) {
             if (packet.get().macDestination == "ff:ff:ff:ff:ff:ff") {
                 // TODO checek this carefully
-                System.out.println("RECEIVED BROADCAST");
+                // System.out.println("RECEIVED BROADCAST");
 
-//                this.current_state = state.IDLE;
+                // this.current_state = state.IDLE;
                 // Bypass the mac layer, instantly pass the packet to dsrReceive.
                 return packet;
             } else {
@@ -150,11 +156,13 @@ public class Node implements Runnable {
     // This method deals with handling a received packet in an appropriate way.
     Optional<LinkLayerPacket> macawReceive(LinkLayerPacket packet) {
         // This if statement deals with broadcasting. It essentially makes sure that
-        System.out.println("Node " + this.id + " in state " + this.current_state + " while receiving " + packet.type + " for " + packet.macDestination);
+        // System.out.println("Node " + this.id + " in state " + this.current_state + "
+        // while receiving " + packet.type
+        // + " for " + packet.macDestination);
 
         if (this.current_state == state.IDLE && packet.type == PacketType.RTS
                 && (Objects.equals(packet.macDestination, this.id))) {
-            System.out.println(this.id + " IS IN " + this.current_state);
+            // System.out.println(this.id + " IS IN " + this.current_state);
             // This corresponds to step 2 of the paper
             // if idle and receive RTS, send Clear to send
             reassignBackoffs(packet);
@@ -163,8 +171,7 @@ public class Node implements Runnable {
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
             this.current_state = state.WFDS;
-            macawSend(ctsPacket, this, succss -> {
-            });
+            macawSend(ctsPacket, this);
             // this.network.send(ctsPacket);
             // Go to Wait for Data Send state
         } else if (this.current_state == state.WFCTS && packet.type == PacketType.CTS
@@ -178,15 +185,13 @@ public class Node implements Runnable {
                     new HashSet<>(), this.local_backoff.getOrDefault(packet.macSource, 0),
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
-            this.macawSend(dsPacket, this, success -> {
-            });
+            this.macawSend(dsPacket, this);
             this.current_state = state.SendData;
             LinkLayerPacket dataPacket = new LinkLayerPacket(PacketType.DATA, this.coordinate, this.id,
                     packet.macSource, new HashSet<>(), this.local_backoff.getOrDefault(packet.macSource, 0),
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
-                    this.exchange_seq_number.getOrDefault(packet.macSource, 0), currentlySendingNLPacket);
-            this.macawSend(dataPacket, this, success -> {
-            });
+                    this.exchange_seq_number.getOrDefault(packet.macSource, 0), networkQueue.peek().packet.data);
+            this.macawSend(dataPacket, this);
             this.current_state = state.WFACK;
             setTimer(this, 1500);
         } else if (this.current_state == state.WFDS && packet.type == PacketType.DS
@@ -205,15 +210,14 @@ public class Node implements Runnable {
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
             this.acknowledgesPackets.add(ackPacket);
-            this.macawSend(ackPacket, this, success -> {
-            });
+            this.macawSend(ackPacket, this);
             this.current_state = state.IDLE;
             return Optional.of(packet);
         } else if (this.current_state == state.WFACK && packet.type == PacketType.ACK
                 && (Objects.equals(packet.macDestination, this.id))) {
             // Step 6
             reassignBackoffs(packet);
-            this.callback.accept(true);
+            networkQueue.peek().callback.accept(true);
             task.cancel();
             this.current_state = state.IDLE;
         } else if (this.current_state == state.IDLE && packet.type == PacketType.RTS
@@ -223,16 +227,14 @@ public class Node implements Runnable {
                     new HashSet<>(), this.local_backoff.getOrDefault(packet.macSource, 0),
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
-            this.macawSend(ackPacket, this, success -> {
-            });
+            this.macawSend(ackPacket, this);
         } else if (packet.type == PacketType.ACK && this.current_state == state.CONTEND) {
             // Step 8
             LinkLayerPacket ctsPacket = new LinkLayerPacket(PacketType.CTS, this.coordinate, this.id, packet.macSource,
                     new HashSet<>(), this.local_backoff.getOrDefault(packet.macSource, 0),
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
-            this.macawSend(ctsPacket, this, success -> {
-            });
+            this.macawSend(ctsPacket, this);
             this.current_state = state.WFDS;
             setTimer(this, 500);
             // TODO This seems wrong!
@@ -270,8 +272,7 @@ public class Node implements Runnable {
                     this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
             this.current_state = state.WFDS;
-            macawSend(ctsPacket, this, success -> {
-            });
+            macawSend(ctsPacket, this);
             setTimer(this, 500);
         } else if (this.current_state == state.IDLE && packet.type == PacketType.RRTS
                 && (Objects.equals(packet.macDestination, this.id))) {
@@ -280,8 +281,7 @@ public class Node implements Runnable {
             LinkLayerPacket rtsPacket = new LinkLayerPacket(PacketType.RTS, this.coordinate, this.id, packet.macSource,
                     new HashSet<>(), this.my_backoff, this.remote_backoff.getOrDefault(packet.macSource, 0),
                     this.exchange_seq_number.getOrDefault(packet.macSource, 0));
-            this.macawSend(rtsPacket, this, success -> {
-            });
+            this.macawSend(rtsPacket, this);
             // this.current_state = state.WFCTS;
             // setTimer(this, 200);
         } else if (packet.type == PacketType.RTS && !Objects.equals(packet.macDestination, this.id)) {
@@ -335,17 +335,17 @@ public class Node implements Runnable {
     // When a node wants to send something, it should call this method instead of
     // directly calling the Network
     // send method. This has to do with the MACAW implementation.
-    void macawSend(LinkLayerPacket packet, Node node, Consumer<Boolean> callback) {
-        this.callback = callback;
+    void macawSend(LinkLayerPacket packet, Node node) {
         if (packet.macDestination.equals("ff:ff:ff:ff:ff:ff")) {
             network.send(packet);
             return;
         }
+
         // Step 1 from paper
         if (this.current_state == state.IDLE) {
             this.current_state = state.CONTEND;
             setTimer(node, 500);
-            System.out.println("Timer set....");
+            // System.out.println("Timer set....");
         } else {
             Platform.runLater(() -> network.visual.showTransmission(node, packet.type.toString()));
             network.send(packet);
@@ -356,7 +356,7 @@ public class Node implements Runnable {
         task.cancel();
         this.current_state = state.IDLE;
         this.dataToSend = "";
-//        this.senderInitiated = false;
+        // this.senderInitiated = false;
         this.receiverInitiated = false;
     }
 
@@ -367,27 +367,29 @@ public class Node implements Runnable {
         task = new TimerTask() {
             @Override
             public void run() {
-                System.out.println("Node " + node.id + " expired in state " + node.current_state);
+                // System.out.println("Node " + node.id + " expired in state " +
+                // node.current_state);
                 if (node.current_state == state.WFCntend) {
                     // first timeout rule
                     node.setTimer(node, 600);
                     node.current_state = state.CONTEND;
                 } else if (node.current_state == state.CONTEND) {
                     // second timeout rule
-                    System.out.println("CURRENT STATE IS CONTEND");
+                    // System.out.println("CURRENT STATE IS CONTEND");
                     // TODO this part is why C does not go back to IDLE.
-                    System.out.println("sender initiated: " + node.senderInitiated);
-                    System.out.println("Receiver initiated: " + node.receiverInitiated);
+                    // System.out.println("sender initiated: " + node.senderInitiated);
+                    // System.out.println("Receiver initiated: " + node.receiverInitiated);
                     if (node.senderInitiated) {
-                        System.out.println("SENDER INITIATED");
+                        // System.out.println("SENDER INITIATED");
                         LinkLayerPacket rtsPacket = new LinkLayerPacket(PacketType.RTS, node.coordinate, node.id,
                                 node.communicatingWith, new HashSet<>(),
                                 node.local_backoff.getOrDefault(node.communicatingWith, 0),
                                 node.remote_backoff.getOrDefault(node.communicatingWith, 0),
-                                node.exchange_seq_number.getOrDefault(node.communicatingWith, 0), currentlySendingNLPacket);
-                        node.macawSend(rtsPacket, node, success -> {});
+                                node.exchange_seq_number.getOrDefault(node.communicatingWith, 0),
+                                networkQueue.peek().packet.data);
+                        node.macawSend(rtsPacket, node);
                         node.current_state = state.WFCTS;
-                        System.out.println("GOING TO WFCTS");
+                        // System.out.println("GOING TO WFCTS");
                         node.setTimer(node, 1600);
                     } else if (node.receiverInitiated) {
                         LinkLayerPacket rrtsPacket = new LinkLayerPacket(PacketType.RRTS, node.coordinate, node.id,
@@ -395,8 +397,7 @@ public class Node implements Runnable {
                                 node.local_backoff.getOrDefault(node.communicatingWith, 0),
                                 node.remote_backoff.getOrDefault(node.communicatingWith, 0),
                                 node.exchange_seq_number.getOrDefault(node.communicatingWith, 0));
-                        macawSend(rrtsPacket, node, success -> {
-                        });
+                        macawSend(rrtsPacket, node);
                         // network.send(rrtsPacket);
                         // NOTE: the two papers do not correspond here. According to the army paper, the
                         // state should be IDLE.
@@ -406,7 +407,7 @@ public class Node implements Runnable {
                         setTimer(node, 600);
                     }
                 } else if (node.current_state == state.WFACK) {
-                    node.callback.accept(false);
+                    networkQueue.peek().callback.accept(false);
                 } else {
                     node.current_state = state.IDLE;
                 }
@@ -424,12 +425,48 @@ public class Node implements Runnable {
                 + this.transmissionRange;
     }
 
+    private void sendFromRoutingToMAC(LinkLayerPacket packet, Node node, Consumer<Boolean> callback) {
+        if (packet.macDestination == "ff:ff:ff:ff:ff:ff") {
+            macawSend(packet, node);
+            callback.accept(true);
+        } else {
+            NetworkQueueEntry networkQueueEntry = new NetworkQueueEntry();
+            networkQueueEntry.packet = packet;
+
+            networkQueueEntry.callback = success -> {
+                networkQueue.remove();
+                callback.accept(success);
+
+                // System.out.println("callback");
+
+                if (!networkQueue.isEmpty()) {
+                    LinkLayerPacket queuedPacket = networkQueue.peek().packet;
+
+                    queuedPacket.data.print();
+
+                    macawSend(queuedPacket, node);
+                }
+            };
+
+            if (networkQueue.isEmpty()) {
+                networkQueue.add(networkQueueEntry);
+
+                packet.data.print();
+
+                macawSend(packet, node);
+            } else {
+                networkQueue.add(networkQueueEntry);
+            }
+        }
+    }
+
     public void sendDSR(String receiver, String data) throws Exception {
-        System.out.println("sendDSR called");
+        // System.out.println("sendDSR called");
         NetworkLayerPacket packet = new NetworkLayerPacket();
 
         packet.ipSource = id;
         packet.ipDestination = receiver;
+        packet.timeToLive = 255;
 
         packet.optionTypes = Set.of();
         packet.data = data;
@@ -459,28 +496,28 @@ public class Node implements Runnable {
     // will make things very
     // complicated and unclear. First, this is a useless mock packet.
     private void originatePacket(NetworkLayerPacket packet, boolean piggyBackRouteRequest) {
-        System.out.println("ORIGINATE PACKET with destination " + packet.ipDestination);
+        // System.out.println("ORIGINATE PACKET with destination " +
+        // packet.ipDestination);
         if (Objects.equals(packet.ipDestination, "255.255.255.255")) {
-            System.out.println("Case 0");
-            this.currentlySendingNLPacket = packet;
+            // System.out.println("Case 0");
             LinkLayerPacket llPacket = new LinkLayerPacket(PacketType.DATA, this.coordinate, this.id,
                     "ff:ff:ff:ff:ff:ff", new HashSet<>(), this.local_backoff.getOrDefault("", 0),
                     this.remote_backoff.getOrDefault("", 0), this.exchange_seq_number.getOrDefault("", 0), packet);
-            macawSend(llPacket, this, success -> {
+            sendFromRoutingToMAC(llPacket, this, success -> {
             });
         } else if (packet.optionTypes.contains(OptionType.SourceRoute)) {
-            System.out.println("Case 1");
+            // System.out.println("Case 1");
             sendWithMaintenance(packet);
         } else {
-            System.out.println("Case 3");
+            // System.out.println("Case 3");
             Optional<List<String>> maybeRoute = findRoute(packet.ipDestination);
 
             if (maybeRoute.isPresent()) {
-                System.out.println("Case 4");
+                // System.out.println("Case 4");
                 List<String> sourceRoute = maybeRoute.get();
                 sendWithSourceRoute(packet, sourceRoute);
             } else {
-                System.out.println("Case 5");
+                // System.out.println("Case 5");
                 routeDiscovery(packet, piggyBackRouteRequest);
             }
         }
@@ -513,7 +550,8 @@ public class Node implements Runnable {
     }
 
     private LinkLayerPacket networkToLinkConversion(NetworkLayerPacket nlPacket) {
-        return new LinkLayerPacket(PacketType.BROADCAST, this.coordinate, this.id, nlPacket.macDestination, new HashSet<>(),
+        return new LinkLayerPacket(PacketType.BROADCAST, this.coordinate, this.id, nlPacket.macDestination,
+                new HashSet<>(),
                 this.local_backoff.getOrDefault("", 0), this.remote_backoff.getOrDefault("", 0),
                 this.exchange_seq_number.getOrDefault("", 0), nlPacket);
 
@@ -527,11 +565,10 @@ public class Node implements Runnable {
         packets.add(packet);
         maintenanceBuffer.put(packet.macDestination, packets);
 
-        this.currentlySendingNLPacket = packet;
         this.communicatingWith = packet.macDestination;
         this.senderInitiated = true;
-        System.out.println("Sending from here!");
-        macawSend(networkToLinkConversion(packet), this, success -> {
+        // System.out.println("Sending from here!");
+        sendFromRoutingToMAC(networkToLinkConversion(packet), this, success -> {
             if (!success) {
                 handleLinkError(id, packet.macDestination);
 
@@ -586,12 +623,15 @@ public class Node implements Runnable {
 
     // Process a received packet.
     private Optional<NetworkLayerPacket> receivePacket(NetworkLayerPacket packet) {
-//        System.out.println("RECEIVING DSR PACKET");
-//        System.out.println("DATA: " + packet.data);
-//        packet.print();
+        // System.out.println("RECEIVING DSR PACKET");
+        // System.out.println("DATA: " + packet.data);
+        // packet.print();
         if (packet.ipSource == id) {
             return Optional.empty();
         }
+
+        // System.out.println(id);
+        // packet.print();
 
         if (packet.piggyBack != null) {
             processPacket(packet.piggyBack);
@@ -599,9 +639,11 @@ public class Node implements Runnable {
 
         boolean mayForward = processPacket(packet);
 
-        if (mayForward && packet.ipDestination != id && !packet.isPiggyBack) {
+        if (mayForward && packet.ipDestination != id && packet.timeToLive > 0 && !packet.isPiggyBack) {
             packet.sourceCoordinate = coordinate;
             packet.received = new HashSet<>();
+
+            packet.timeToLive -= 1;
 
             originatePacket(packet, false);
         } else {
@@ -676,8 +718,6 @@ public class Node implements Runnable {
 
                 packet.macSource = id;
 
-                packet.timeToLive -= 1;
-
                 packet.route.add(id);
             }
         }
@@ -725,8 +765,6 @@ public class Node implements Runnable {
                     packet.macSource = id;
                     packet.macDestination = packet.ipDestination;
 
-                    packet.timeToLive -= 1;
-
                     packet.segmentsLeft -= 1;
                 }
             } else if (packet.segmentsLeft > 1) {
@@ -738,8 +776,6 @@ public class Node implements Runnable {
 
                     packet.macSource = id;
                     packet.macDestination = packet.sourceRoute.get(i);
-
-                    packet.timeToLive -= 1;
 
                     packet.segmentsLeft -= 1;
                 }
@@ -899,11 +935,11 @@ public class Node implements Runnable {
             routeRequestPacket.piggyBack = packet;
         }
 
-        this.currentlySendingNLPacket = routeRequestPacket;
         LinkLayerPacket llPacket = networkToLinkConversion(routeRequestPacket);
-        System.out.println("Sending ll packet with destination " + llPacket.macDestination);
+        // System.out.println("Sending ll packet with destination " +
+        // llPacket.macDestination);
 
-        macawSend(llPacket, this, success -> {
+        sendFromRoutingToMAC(llPacket, this, success -> {
         });
     }
 
@@ -1025,5 +1061,10 @@ public class Node implements Runnable {
         private String targetAddress;
         private String sourceAddress;
         private int timeRemaining;
+    }
+
+    private final class NetworkQueueEntry {
+        private LinkLayerPacket packet;
+        private Consumer<Boolean> callback;
     }
 }

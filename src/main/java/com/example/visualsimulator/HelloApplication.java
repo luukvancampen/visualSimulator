@@ -21,7 +21,6 @@ import javafx.util.Duration;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 public class HelloApplication extends Application {
 
@@ -32,17 +31,15 @@ public class HelloApplication extends Application {
     HashMap<String, Circle> circleMap = new HashMap<>();
     HashMap<String, Circle> rangeMap = new HashMap<>();
 
-//    double scale = 1.0;
+    // double scale = 1.0;
     LinkedList<Node> nodeList = new LinkedList<>();
     VBox nodeVBox = new VBox();
     Network network = new Network(this);
     Canvas canvas = null;
     Pane pane = null;
 
-
-
     @Override
-    public void start(Stage stage)  {
+    public void start(Stage stage) {
         VBox container = new VBox();
         Scene scene = new Scene(container);
         stage.setTitle("Hello!");
@@ -50,8 +47,6 @@ public class HelloApplication extends Application {
 
         stage.setWidth(800);
         stage.setHeight(600);
-
-
 
         ToggleGroup toggleGroup = new ToggleGroup();
         HBox radioHBox = new HBox();
@@ -72,7 +67,6 @@ public class HelloApplication extends Application {
         pane.setMinSize(600, 600);
         paneBox.getChildren().add(pane);
 
-
         EventHandler<ActionEvent> radioHandler = actionEvent -> {
             RadioButton button = (RadioButton) actionEvent.getSource();
             String option = button.getText();
@@ -81,10 +75,8 @@ public class HelloApplication extends Application {
                 Button addNodeButton = new Button("Add node");
                 container.getChildren().add(addNodeButton);
 
-
                 addNodeButton.setOnAction(addManualNodeHandler);
                 addNodeButton.setUserData(pane);
-
 
             } else if (option.equals("Random")) {
                 nodeList.clear();
@@ -110,8 +102,9 @@ public class HelloApplication extends Application {
                                     getRandomNumber(200, 600),
                                     getRandomNumber(200, 600)
                             };
-                            double[] fixedCoord = {100 * (i + 2), 100 * (i + 2)};
-//                            Node node = new Node(getNthLetter(i + 1), ThreadLocalRandom.current().nextInt(50, 100), coordinate, network);
+                            double[] fixedCoord = { 100 * (i + 2), 100 * (i + 2) };
+                            // Node node = new Node(getNthLetter(i + 1),
+                            // ThreadLocalRandom.current().nextInt(50, 100), coordinate, network);
                             Node node = new Node(getNthLetter(i + 1), 200, newCoordinate, network);
                             nodeList.add(node);
                             drawNodeNew(node, pane);
@@ -127,65 +120,38 @@ public class HelloApplication extends Application {
                 startRandomSimulationButton.setOnAction(startRandomSimulation);
                 stopRandomSimulationButton.setOnAction(stopRandomSimulation);
 
-                simulationButtonBox.getChildren().addAll(simulationStarStopText, startRandomSimulationButton, stopRandomSimulationButton);
-
-
+                simulationButtonBox.getChildren().addAll(simulationStarStopText, startRandomSimulationButton,
+                        stopRandomSimulationButton);
 
                 paneBox.getChildren().add(simulationButtonBox);
                 numberOfNodesHBox.getChildren().addAll(numberOfNodesText, numberOfNodesTextField);
                 container.getChildren().add(numberOfNodesHBox);
             } else {
                 System.out.println("HERE!");
-                Node n1 = new Node("A", 60, new double[]{50, 150}, network);
-                Node n2 = new Node("B", 60, new double[]{100, 150}, network);
-                Node n3 = new Node("C", 60, new double[]{150, 150}, network);
-                Node n4 = new Node("D", 60, new double[]{200, 150}, network);
-                Node n5 = new Node("E", 60, new double[]{250, 150}, network);
-                Node n6 = new Node("F", 60, new double[]{250, 200}, network);
-                Node n7 = new Node("G", 60, new double[]{250, 250}, network);
-                Node n8 = new Node("H", 60, new double[]{200, 250}, network);
-                Node n9 = new Node("I", 60, new double[]{120, 130}, network);
-                Node n10 = new Node("J", 60, new double[]{200, 200}, network);
+                Node n1 = new Node("A", 50, new double[] { 50, 150 }, network);
+                Node n2 = new Node("B", 50, new double[] { 100, 150 }, network);
+                Node n3 = new Node("C", 50, new double[] { 50, 200 }, network);
+                Node n4 = new Node("D", 50, new double[] { 100, 200 }, network);
 
                 Thread n1Thread = new Thread(n1);
                 Thread n2Thread = new Thread(n2);
                 Thread n3Thread = new Thread(n3);
                 Thread n4Thread = new Thread(n4);
-                Thread n5Thread = new Thread(n5);
-                Thread n6Thread = new Thread(n6);
-                Thread n7Thread = new Thread(n7);
-                Thread n8Thread = new Thread(n8);
-                Thread n9Thread = new Thread(n9);
-                Thread n10Thread = new Thread(n10);
 
                 drawNodeNew(n1, pane);
                 drawNodeNew(n2, pane);
                 drawNodeNew(n3, pane);
                 drawNodeNew(n4, pane);
-                drawNodeNew(n5, pane);
-                drawNodeNew(n6, pane);
-                drawNodeNew(n7, pane);
-                drawNodeNew(n8, pane);
-                drawNodeNew(n9, pane);
-                drawNodeNew(n10, pane);
 
                 n1Thread.start();
                 n2Thread.start();
-                n3Thread.start();
-                n4Thread.start();
-                n5Thread.start();
-                n6Thread.start();
-                n7Thread.start();
-                n8Thread.start();
-                n9Thread.start();
-                n10Thread.start();
+                // n3Thread.start();
+                // n4Thread.start();
 
-                submitTask(n1, "H", "Wow, routing works!", 3000);
+                submitTask(n1, "B", "Wow, routing works!", 3000);
             }
             System.out.println("Selected " + option);
         };
-
-
 
         randomRadio.setOnAction(radioHandler);
         manualRadio.setOnAction(radioHandler);
@@ -193,7 +159,7 @@ public class HelloApplication extends Application {
         container.getChildren().add(radioHBox);
         container.getChildren().add(nodeVBox);
         container.getChildren().add(paneBox);
-//        container.getChildren().add(startSimulationButton);
+        // container.getChildren().add(startSimulationButton);
 
         stage.show();
     }
@@ -209,7 +175,8 @@ public class HelloApplication extends Application {
         }
         for (Node node : nodeList) {
             node.reset();
-        };
+        }
+        ;
     };
 
     EventHandler<ActionEvent> startRandomSimulation = actionEvent -> {
@@ -244,7 +211,8 @@ public class HelloApplication extends Application {
     };
 
     public Optional<Node> getRandomNodeInRange(Node sender) {
-        List<Node> inRange = nodeList.stream().filter(n -> network.nodeWithinNodeRange(sender, n) && !Objects.equals(sender.id, n.id)).toList();
+        List<Node> inRange = nodeList.stream()
+                .filter(n -> network.nodeWithinNodeRange(sender, n) && !Objects.equals(sender.id, n.id)).toList();
         if (!inRange.isEmpty()) {
             Integer randomIndex = ThreadLocalRandom.current().nextInt(0, inRange.size());
             return Optional.of(inRange.get(randomIndex));
@@ -293,14 +261,16 @@ public class HelloApplication extends Application {
         submitTask(nodeList.get(2), "Node 3", "Helloo!", 100);
         System.out.println("Node at index 2: " + nodeList.get(2).id);
         submitTask(nodeList.get(0), "Node 1", "Goodbye!", 600);
-//        while (true) {
-//            System.out.println(nodeList.get(0).getCurrent_state() + " " + nodeList.get(1).getCurrent_state() + " " + nodeList.get(2).getCurrent_state() + " " + nodeList.get(3).getCurrent_state());
-//            try {
-//                Thread.sleep(50);
-//            } catch (InterruptedException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
+        // while (true) {
+        // System.out.println(nodeList.get(0).getCurrent_state() + " " +
+        // nodeList.get(1).getCurrent_state() + " " + nodeList.get(2).getCurrent_state()
+        // + " " + nodeList.get(3).getCurrent_state());
+        // try {
+        // Thread.sleep(50);
+        // } catch (InterruptedException e) {
+        // throw new RuntimeException(e);
+        // }
+        // }
     }
 
     void updateNodeInList(Node node) {
@@ -346,14 +316,14 @@ public class HelloApplication extends Application {
 
         for (int frame = 0; frame <= 100; frame++) {
             Duration frameDuration = Duration.millis((frame * duration.toMillis()) / 100);
-            double currentRadius = (frame / (double)100) * finalRadius;
+            double currentRadius = (frame / (double) 100) * finalRadius;
 
             int finalFrame = frame;
             KeyFrame keyFrame = new KeyFrame(frameDuration, event -> {
                 animationBasis.setRadius(currentRadius);
                 double textAngle = (finalFrame / (double) 100) * 360;
-                double textXEdge = n.coordinate[0] + currentRadius; //* Math.cos(Math.toRadians(textAngle));
-                double textYEdge = n.coordinate[1] + currentRadius; //* Math.sin(Math.toRadians(textAngle));
+                double textXEdge = n.coordinate[0] + currentRadius; // * Math.cos(Math.toRadians(textAngle));
+                double textYEdge = n.coordinate[1] + currentRadius; // * Math.sin(Math.toRadians(textAngle));
                 text.setLayoutX(textXEdge);
                 text.setLayoutY(textYEdge);
             });
@@ -362,8 +332,9 @@ public class HelloApplication extends Application {
         }
         timeline.setCycleCount(1);
         timeline.play();
-//        EventHandler onFinished = event -> {pane.getChildren().remove(animationBasis);};
-//        timeline.setOnFinished(onFinished);
+        // EventHandler onFinished = event ->
+        // {pane.getChildren().remove(animationBasis);};
+        // timeline.setOnFinished(onFinished);
         EventHandler onFinished = event -> {
             pane.getChildren().remove(text);
             pane.getChildren().remove(animationBasis);
@@ -371,7 +342,6 @@ public class HelloApplication extends Application {
 
         timeline.setOnFinished(onFinished);
     }
-
 
     void drawNodeNew(Node n, Pane pane) {
         Circle circle = new Circle();
@@ -394,11 +364,9 @@ public class HelloApplication extends Application {
         pane.getChildren().add(range);
     }
 
-
-
     private void drawCircle(double finalRadius, Node node) {
         Integer fc = framecountMap.getOrDefault(node.id, 0);
-        double scale = (fc / (double)100) * (finalRadius - 1) + 1;
+        double scale = (fc / (double) 100) * (finalRadius - 1) + 1;
 
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.setFill(Color.TRANSPARENT);
@@ -411,7 +379,6 @@ public class HelloApplication extends Application {
     void sameTime() {
         ParallelTransition transition = new ParallelTransition();
 
-
         for (Node n : nodeList) {
             transition.getChildren().add(transmitAnimation(n));
         }
@@ -419,7 +386,7 @@ public class HelloApplication extends Application {
         transition.play();
     }
 
-     Timeline transmitAnimation(Node node) {
+    Timeline transmitAnimation(Node node) {
 
         Timeline timeline = new Timeline();
 
@@ -436,16 +403,14 @@ public class HelloApplication extends Application {
     }
 
     EventHandler<ActionEvent> addManualNodeHandler = actionEvent -> {
-        Node node = new Node("Node " + nodeList.size(), 20, new double[]{200, 200}, network);
+        Node node = new Node("Node " + nodeList.size(), 20, new double[] { 200, 200 }, network);
         nodeList.add(node);
-
 
         Object button = actionEvent.getSource();
         Pane pane = null;
         if (button instanceof Button) {
             pane = (Pane) ((Button) button).getUserData();
         }
-
 
         TextField nodeNameTextField = new TextField(node.id);
         TextField transmissionRangeTextField = new TextField("20");
@@ -492,12 +457,12 @@ public class HelloApplication extends Application {
         animationButton.setOnAction(animationEvent);
 
         HBox lineHbox = new HBox();
-        lineHbox.getChildren().addAll(nodeNameTextField, transmissionRangeTextField, xCoordinateTextField, yCoordinateTextField, animationButton);
+        lineHbox.getChildren().addAll(nodeNameTextField, transmissionRangeTextField, xCoordinateTextField,
+                yCoordinateTextField, animationButton);
 
         nodeVBox.getChildren().add(lineHbox);
 
     };
-
 
     public static void main(String[] args) {
         launch();
