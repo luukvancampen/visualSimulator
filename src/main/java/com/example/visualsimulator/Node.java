@@ -27,6 +27,8 @@ public class Node implements Runnable {
         this.range = range;
         this.network = network;
 
+        network.nodes.put(id, this);
+
         reset();
     }
 
@@ -73,7 +75,7 @@ public class Node implements Runnable {
 
         NetworkLayerPacket packet = maybePacket.get();
 
-        if (packet.macDestination != id && packet.macDestination != "ff:ff:ff:ff:ff:ff") {
+        if (!packet.macDestination.equals(id) && !packet.macDestination.equals("ff:ff:ff:ff:ff:ff")) {
             return Optional.empty();
         }
 
@@ -138,7 +140,7 @@ public class Node implements Runnable {
     // Else if we know no route, store the packet in the sendBuffer and perform
     // route discovery.
     private void originatePacket(NetworkLayerPacket packet, boolean piggyBackRouteRequest) {
-        if (packet.ipDestination == "255.255.255.255") {
+        if (packet.ipDestination.equals("255.255.255.255")) {
             sendMACAW(packet);
         } else if (packet.optionTypes.contains(OptionType.SourceRoute)) {
             sendWithMaintenance(packet);
@@ -195,7 +197,7 @@ public class Node implements Runnable {
                 handleLinkError(id, packet.macDestination);
 
                 for (NetworkLayerPacket sentPacket : maintenanceBuffer.get(packet.macDestination)) {
-                    if (sentPacket.ipSource != id) {
+                    if (!sentPacket.ipSource.equals(id)) {
                         Set<OptionType> optionTypes = new HashSet<>();
                         optionTypes.add(OptionType.RouteError);
 
@@ -245,7 +247,7 @@ public class Node implements Runnable {
 
     // Process a received packet.
     private Optional<NetworkLayerPacket> receivePacket(NetworkLayerPacket packet) {
-        if (packet.ipSource == id) {
+        if (packet.ipSource.equals(id)) {
             return Optional.empty();
         }
 
@@ -256,7 +258,7 @@ public class Node implements Runnable {
             route.add(id);
             updateRoutingCache(route);
 
-            if (packet.targetAddress == id) {
+            if (packet.targetAddress.equals(id)) {
                 route = new ArrayList<>();
                 route.addAll(packet.route);
                 route.add(packet.targetAddress);
@@ -353,7 +355,7 @@ public class Node implements Runnable {
             // TODO automatic route shortening
 
             if (packet.segmentsLeft == 1) {
-                if (packet.ipDestination != "255.255.255.255") {
+                if (!packet.ipDestination.equals("255.255.255.255")) {
                     packet.sourceCoordinate = coordinate;
                     packet.received = new HashSet<>();
 
@@ -365,7 +367,8 @@ public class Node implements Runnable {
             } else if (packet.segmentsLeft > 1) {
                 int i = packet.sourceRoute.size() - packet.segmentsLeft + 1;
 
-                if (packet.sourceRoute.get(i) != "255.255.255.255" && packet.ipDestination != "255.255.255.255") {
+                if (!packet.sourceRoute.get(i).equals("255.255.255.255")
+                        && !packet.ipDestination.equals("255.255.255.255")) {
                     packet.sourceCoordinate = coordinate;
                     packet.received = new HashSet<>();
 
@@ -377,7 +380,7 @@ public class Node implements Runnable {
             }
         }
 
-        if (packet.ipDestination != id && packet.timeToLive > 0 && !packet.isPiggyBack) {
+        if (!packet.ipDestination.equals(id) && packet.timeToLive > 0 && !packet.isPiggyBack) {
             packet.sourceCoordinate = coordinate;
             packet.received = new HashSet<>();
 
@@ -430,7 +433,7 @@ public class Node implements Runnable {
         while (iter.hasNext()) {
             RouteCacheEntry entry = iter.next();
 
-            if (entry.destinationAddress == destinationAddress) {
+            if (entry.destinationAddress.equals(destinationAddress)) {
                 iter.remove();
             }
         }
@@ -443,7 +446,7 @@ public class Node implements Runnable {
         routeRequestId.routeRequestIdentification = routeRequestPacket.identification;
         routeRequestId.targetAddress = routeRequestPacket.targetAddress;
 
-        RouteRequestTableEntry routeRequestTableEntry = routeRequestTable.getOrDefault(id,
+        RouteRequestTableEntry routeRequestTableEntry = routeRequestTable.getOrDefault(routeRequestPacket.ipSource,
                 new RouteRequestTableEntry());
 
         if (routeRequestTableEntry.routeRequests == null) {
@@ -455,6 +458,8 @@ public class Node implements Runnable {
         routeRequestTableEntry.timeToLive = routeRequestPacket.timeToLive;
         routeRequestTableEntry.consecutiveRequests += 1;
         routeRequestTableEntry.routeRequests.add(routeRequestId);
+
+        routeRequestTable.put(routeRequestPacket.ipSource, routeRequestTableEntry);
     }
 
     // Update our routing cache with the given new route.
@@ -469,7 +474,7 @@ public class Node implements Runnable {
             while (iter.hasNext()) {
                 RouteCacheEntry entry = iter.next();
 
-                if (entry.destinationAddress == destinationAddress) {
+                if (entry.destinationAddress.equals(destinationAddress)) {
                     iter.remove();
                 }
             }
@@ -555,7 +560,7 @@ public class Node implements Runnable {
         if (routeRequestTableEntry != null) {
             for (RouteRequestId id : routeRequestTableEntry.routeRequests) {
                 if (id.routeRequestIdentification == routeRequestPacket.identification
-                        && id.targetAddress == routeRequestPacket.targetAddress) {
+                        && id.targetAddress.equals(routeRequestPacket.targetAddress)) {
                     return true;
                 }
             }
@@ -572,7 +577,7 @@ public class Node implements Runnable {
         List<String> queue = new ArrayList<>();
 
         for (String node : routeCache.keySet()) {
-            if (node == id) {
+            if (node.equals(id)) {
                 hops.put(node, 0);
             } else {
                 hops.put(node, Integer.MAX_VALUE);
@@ -608,7 +613,7 @@ public class Node implements Runnable {
                         hops.put(neighbour.destinationAddress, newHops);
                         previous.put(neighbour.destinationAddress, node);
 
-                        if (neighbour.destinationAddress == destination) {
+                        if (neighbour.destinationAddress.equals(destination)) {
                             queue.clear();
                         }
                     }
@@ -620,7 +625,7 @@ public class Node implements Runnable {
 
         String currentNode = destination;
 
-        while (currentNode != id) {
+        while (!currentNode.equals(id)) {
             String prev = previous.get(currentNode);
 
             if (prev == null) {

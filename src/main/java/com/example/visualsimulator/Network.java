@@ -2,11 +2,14 @@ package com.example.visualsimulator;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.Optional;
 
 import javafx.application.Platform;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
 import javafx.util.Pair;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +17,15 @@ import java.util.Map;
 public class Network implements Runnable {
     // transmission range in meters.
     final LinkedList<NetworkLayerPacket> packets = new LinkedList<>();
+    Map<String, Node> nodes = new HashMap<>();
+
+    List<Line> currentLines = new ArrayList<>();
+
+    HelloApplication visual;
+
+    Network(HelloApplication visual) {
+        this.visual = visual;
+    }
 
     // TODO deal with broadcast of TD messages, they're for everyone (I think).
 
@@ -38,6 +50,51 @@ public class Network implements Runnable {
                 Thread.sleep(10);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
+            }
+
+            if (packet.ipSource.equals(packet.macSource) && packet.data != null) {
+                List<String> route = new ArrayList<>();
+
+                route.add(packet.ipSource);
+
+                if (packet.sourceRoute != null) {
+                    route.addAll(packet.sourceRoute);
+                }
+
+                route.add(packet.ipDestination);
+
+                System.out.println("Using route " + route);
+
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        visual.pane.getChildren().removeAll(currentLines);
+
+                        currentLines.clear();
+
+                        Iterator<String> iter = route.iterator();
+
+                        String current = iter.next();
+
+                        while (iter.hasNext()) {
+                            String next = iter.next();
+
+                            Node source = nodes.get(current);
+                            Node dest = nodes.get(next);
+
+                            Line line = new Line(source.coordinate[0], source.coordinate[1], dest.coordinate[0],
+                                    dest.coordinate[1]);
+                            line.setStroke(Color.rgb(0, 0, 0));
+                            line.setStrokeWidth(3);
+                            visual.pane.getChildren().add(line);
+
+                            current = next;
+
+                            currentLines.add(line);
+                        }
+                    }
+                });
+
             }
 
             // packet.print();

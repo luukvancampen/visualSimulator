@@ -40,7 +40,7 @@ public class HelloApplication extends Application {
     // double scale = 1.0;
     LinkedList<Node> nodeList = new LinkedList<>();
     VBox nodeVBox = new VBox();
-    Network network = new Network();
+    Network network = new Network(this);
     Canvas canvas = null;
     Pane pane = null;
 
@@ -125,13 +125,34 @@ public class HelloApplication extends Application {
                 Button startRandomSimulationButton = new Button("Start");
                 Button stopRandomSimulationButton = new Button("Stop");
 
+                HBox sendingBox = new HBox();
+                TextField senderTextField = new TextField("A");
+                TextField receiverTextField = new TextField("B");
+                Button sendButton = new Button("Send");
+                sendButton.setOnAction(event -> {
+                    String source = senderTextField.getText();
+                    String dest = receiverTextField.getText();
+
+                    for (Node node : nodeList) {
+                        if (node.id.equals(source)) {
+                            System.out.println("Sending from " + source + " to " + dest);
+
+                            node.sendDSR(dest, "Sending from sender to receiver :o");
+
+                            break;
+                        }
+                    }
+                });
+
                 startRandomSimulationButton.setOnAction(startRandomSimulation);
                 stopRandomSimulationButton.setOnAction(stopRandomSimulation);
 
                 simulationButtonBox.getChildren().addAll(simulationStarStopText, startRandomSimulationButton,
                         stopRandomSimulationButton);
 
-                paneBox.getChildren().add(simulationButtonBox);
+                sendingBox.getChildren().addAll(senderTextField, receiverTextField, sendButton);
+
+                paneBox.getChildren().addAll(simulationButtonBox, sendingBox);
                 numberOfNodesHBox.getChildren().addAll(numberOfNodesText, numberOfNodesTextField);
                 container.getChildren().add(numberOfNodesHBox);
             } else {
@@ -158,7 +179,7 @@ public class HelloApplication extends Application {
 
                 submitTask(n1, "B", "Wow, routing works!", 3000);
             }
-            System.out.println("Selected " + option);
+            // System.out.println("Selected " + option);
         };
 
         randomRadio.setOnAction(radioHandler);
@@ -196,21 +217,22 @@ public class HelloApplication extends Application {
                     simulationThreads.add(thread);
                     thread.start();
                 }
-                simulationRunning = true;
-                while (simulationRunning) {
-                    Integer index = ThreadLocalRandom.current().nextInt(0, nodeList.size());
-                    Integer receiverIndex = ThreadLocalRandom.current().nextInt(0, nodeList.size());
-                    Node sendNode = nodeList.get(index);
-                    Node receiverNode = nodeList.get(receiverIndex);
-                    // Get random node in range....
-                    submitTask(sendNode, receiverNode.id, "This is a routing protocol! Amazing!",
-                            ThreadLocalRandom.current().nextInt(10, 500));
-                    try {
-                        Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                // simulationRunning = true;
+                // while (simulationRunning) {
+                // Integer index = ThreadLocalRandom.current().nextInt(0, nodeList.size());
+                // Integer receiverIndex = ThreadLocalRandom.current().nextInt(0,
+                // nodeList.size());
+                // Node sendNode = nodeList.get(index);
+                // Node receiverNode = nodeList.get(receiverIndex);
+                // // Get random node in range....
+                // submitTask(sendNode, receiverNode.id, "This is a routing protocol! Amazing!",
+                // ThreadLocalRandom.current().nextInt(10, 500));
+                // try {
+                // Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
+                // } catch (InterruptedException e) {
+                // throw new RuntimeException(e);
+                // }
+                // }
             }
         }).start();
     };
