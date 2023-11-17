@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Objects;
 import java.util.Optional;
+
+import javafx.application.Platform;
 import javafx.util.Pair;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +32,13 @@ public class Network implements Runnable {
         while (true) {
             try {
                 Thread.sleep(100);
+
+                Platform.runLater(new Runnable() {
+                    @Override
+                    public void run() {
+                        visual.drawRoute(getCurrentRoutes());
+                    }
+                });
                 // System.out.println("Network contents: " + this.packets.toString());
                 // TODO handle collisions here. Partially random?
             } catch (InterruptedException e) {

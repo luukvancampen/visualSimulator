@@ -93,9 +93,9 @@ public class Node implements Runnable {
 
     void send(String receiver, String data) throws Exception {
         // TODO throw exception when in quiet state.
-        if (this.current_state == state.QUIET) {
-            throw new Exception("QUIET");
-        }
+//        if (this.current_state == state.QUIET) {
+//            throw new Exception("QUIET");
+//        }
         // System.out.println("Sending " + data + " to " + receiver);
         this.senderInitiated = true;
         this.dataToSend = data;
@@ -640,7 +640,7 @@ public class Node implements Runnable {
         }
 
         System.out.println(id);
-        packet.print();
+//        packet.print();
 
         if (packet.piggyBack != null) {
             processPacket(packet.piggyBack);

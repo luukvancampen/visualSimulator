@@ -13,16 +13,22 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.util.Duration;
+import javafx.util.Pair;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class HelloApplication extends Application {
+
+    HashSet<Line> routeLines = new HashSet<>();
+    HashSet<Pair<Node, Node>> alreadyDrawn = new HashSet<>();
+    Integer colorCounter = 0;
 
     boolean simulationRunning = false;
     List<Thread> simulationThreads = new LinkedList<>();
@@ -40,6 +46,9 @@ public class HelloApplication extends Application {
 
     @Override
     public void start(Stage stage) {
+        Thread networkThread = new Thread(network, "Network thread");
+        networkThread.start();
+
         VBox container = new VBox();
         Scene scene = new Scene(container);
         stage.setTitle("Hello!");
@@ -102,7 +111,6 @@ public class HelloApplication extends Application {
                                     getRandomNumber(200, 600),
                                     getRandomNumber(200, 600)
                             };
-                            double[] fixedCoord = { 100 * (i + 2), 100 * (i + 2) };
                             // Node node = new Node(getNthLetter(i + 1),
                             // ThreadLocalRandom.current().nextInt(50, 100), coordinate, network);
                             Node node = new Node(getNthLetter(i + 1), 200, newCoordinate, network);
@@ -191,24 +199,42 @@ public class HelloApplication extends Application {
                 simulationRunning = true;
                 while (simulationRunning) {
                     Integer index = ThreadLocalRandom.current().nextInt(0, nodeList.size());
+                    Integer receiverIndex = ThreadLocalRandom.current().nextInt(0, nodeList.size());
                     Node sendNode = nodeList.get(index);
+                    Node receiverNode = nodeList.get(receiverIndex);
                     // Get random node in range....
-                    Optional<Node> receiver = getRandomNodeInRange(sendNode);
-                    if (receiver.isPresent()) {
-                        Node r = receiver.get();
-                        submitTask(sendNode, r.id, "Hello!", ThreadLocalRandom.current().nextInt(10, 500));
-                        simulationRunning = false;
-                        try {
-                            Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
+                    submitTask(sendNode, receiverNode.id, "This is a routing protocol! Amazing!", ThreadLocalRandom.current().nextInt(10, 500));
+                    try {
+                        Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
                     }
-
                 }
             }
         }).start();
     };
+
+    void drawRoute(List<Pair<Node, Node>> routeList) {
+        for (Line l : routeLines) {
+            pane.getChildren().remove(l);
+        }
+        routeLines.clear();
+
+        for (Pair<Node, Node> routePart : routeList) {
+            if (true) {
+                Node origin = routePart.getKey();
+                Node destination = routePart.getValue();
+                System.out.println("Route info: " + origin.coordinate[0] + " " + origin.coordinate[1] + " " + destination.coordinate[0] + " " + destination.coordinate[1]);
+                Line routeLine = new Line(origin.coordinate[0], origin.coordinate[1], destination.coordinate[0], destination.coordinate[1]);
+                routeLine.setStroke(Color.rgb(0, colorCounter%255, colorCounter%255 ));
+                routeLine.setStrokeWidth(3);
+                pane.getChildren().add(routeLine);
+                routeLines.add(routeLine);
+            }
+        }
+        colorCounter++;
+        alreadyDrawn.addAll(routeList);
+    }
 
     public Optional<Node> getRandomNodeInRange(Node sender) {
         List<Node> inRange = nodeList.stream()
@@ -233,8 +259,8 @@ public class HelloApplication extends Application {
                 try {
                     node.send(receiver, data);
                 } catch (Exception e) {
-                    e.printStackTrace();
-                    System.out.println("EXCEPTION");
+//                    e.printStackTrace();
+//                    System.out.println("EXCEPTION");
                     // Reschedule because node was in QUIET state
                     submitTask(node, receiver, data, delay + 200);
                 }
