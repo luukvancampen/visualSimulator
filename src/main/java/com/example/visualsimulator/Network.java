@@ -13,17 +13,7 @@ import java.util.Map;
 
 public class Network implements Runnable {
     // transmission range in meters.
-    final LinkedList<LinkLayerPacket> packets = new LinkedList<>();
-
-    final Map<String, Node> nodes;
-
-    public Network(HelloApplication visual) {
-        this.visual = visual;
-
-        nodes = new HashMap<>();
-    }
-
-    HelloApplication visual;
+    final LinkedList<NetworkLayerPacket> packets = new LinkedList<>();
 
     // TODO deal with broadcast of TD messages, they're for everyone (I think).
 
@@ -32,13 +22,6 @@ public class Network implements Runnable {
         while (true) {
             try {
                 Thread.sleep(100);
-
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        visual.drawRoute(getCurrentRoutes());
-                    }
-                });
                 // System.out.println("Network contents: " + this.packets.toString());
                 // TODO handle collisions here. Partially random?
             } catch (InterruptedException e) {
@@ -49,15 +32,28 @@ public class Network implements Runnable {
 
     // Nodes can call this method to send a packet to the network. It can't fail, so
     // no need to return anything.
-    void send(LinkLayerPacket packet) {
+    void send(NetworkLayerPacket packet) {
         synchronized (this.packets) {
             try {
                 Thread.sleep(10);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-            // System.out.println(packet.macSource + " ---> " + packet.macDestination+ ": "
-            // + packet.type.toString());
+
+            // packet.print();
+
+            // System.out.println(packet.macSource + " ---> " + packet.macDestination + ": "
+            // + packet.optionTypes + " :: "
+            // + packet.sourceRoute);
+
+            // if (packet.piggyBack != null) {
+            // System.out.println(
+            // "piggy backed: " + packet.piggyBack.macSource + " ---> " +
+            // packet.piggyBack.macDestination
+            // + ": " + packet.piggyBack.optionTypes + " :: "
+            // + packet.piggyBack.sourceRoute);
+            // }
+
             this.packets.add(packet);
         }
     }
@@ -65,28 +61,41 @@ public class Network implements Runnable {
     // Nodes can call this method to receive all packets destined for them. It
     // either returns an Optional<Packet> or
     // nothing.
-    Optional<LinkLayerPacket> receive(Node node) {
+    Optional<NetworkLayerPacket> receive(Node node) {
         synchronized (this.packets) {
-            for (LinkLayerPacket packet : this.packets) {
+            for (NetworkLayerPacket packet : this.packets) {
+                if (packet.piggyBack != null) {
+                    if (!packet.piggyBack.received.contains(node) && nodeWithinRange(packet, node)
+                            && !Objects.equals(node.id, packet.macSource)) {
+                        // Packet destined for node, make sure the node is added to the packets received
+                        // list
+
+                        packet.piggyBack.received.add(node);
+                        // Return a deep copy of the object.
+                        // TODO think about this, deep copy really necessary? I think so.
+                        NetworkLayerPacket transmittedPacket = packet.piggyBack.clone();
+                        // System.out.println(node.id + " receives " + packet.type.toString() + " from "
+                        // + packet.originID);
+                        return Optional.of(transmittedPacket);
+                    }
+                }
+
                 // let a node receive a packet whenever it is in range.
                 if (!packet.received.contains(node) && nodeWithinRange(packet, node)
                         && !Objects.equals(node.id, packet.macSource)) {
                     // Packet destined for node, make sure the node is added to the packets received
                     // list
+
                     packet.received.add(node);
                     // Return a deep copy of the object.
                     // TODO think about this, deep copy really necessary? I think so.
-                    LinkLayerPacket transmittedPacket = packet.clone();
+                    NetworkLayerPacket transmittedPacket = packet.clone();
                     // System.out.println(node.id + " receives " + packet.type.toString() + " from "
                     // + packet.originID);
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
                     return Optional.of(transmittedPacket);
                 }
             }
+
             return Optional.empty();
         }
     }
@@ -94,15 +103,15 @@ public class Network implements Runnable {
     // The following method will return true when a node is in range of the origin
     // of a packet.
     // (Nodes each have their own transmission range)
-    boolean nodeWithinRange(LinkLayerPacket packet, Node node) {
-        double packetX = packet.originCoordinate[0];
-        double packetY = packet.originCoordinate[1];
+    boolean nodeWithinRange(NetworkLayerPacket packet, Node node) {
+        double packetX = packet.sourceCoordinate[0];
+        double packetY = packet.sourceCoordinate[1];
 
         double nodeX = node.coordinate[0];
         double nodeY = node.coordinate[1];
 
         double distance = Math.sqrt(Math.pow(Math.abs(packetX - nodeX), 2) + Math.pow(Math.abs(packetY - nodeY), 2));
-        return distance <= node.transmissionRange;
+        return distance <= node.range;
     }
 
     boolean nodeWithinNodeRange(Node sender, Node receiver) {
@@ -114,24 +123,6 @@ public class Network implements Runnable {
 
         double distance = Math
                 .sqrt(Math.pow(Math.abs(senderX - receiverX), 2) + Math.pow(Math.abs(senderY - receiverY), 2));
-        return distance < sender.transmissionRange;
-    }
-
-    List<Pair<Node, Node>> getCurrentRoutes() {
-        List<Pair<Node, Node>> routes = new ArrayList<>();
-
-        for (LinkLayerPacket packet : packets) {
-            if (packet.macDestination != "ff:ff:ff:ff:ff:ff") {
-                Node dest = nodes.get(packet.macDestination);
-
-                if (!packet.received.contains(dest)) {
-                    Node source = nodes.get(packet.macSource);
-
-                    routes.add(new Pair<Node, Node>(source, dest));
-                }
-            }
-        }
-
-        return routes;
+        return distance < sender.range;
     }
 }

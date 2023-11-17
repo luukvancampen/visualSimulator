@@ -40,7 +40,7 @@ public class HelloApplication extends Application {
     // double scale = 1.0;
     LinkedList<Node> nodeList = new LinkedList<>();
     VBox nodeVBox = new VBox();
-    Network network = new Network(this);
+    Network network = new Network();
     Canvas canvas = null;
     Pane pane = null;
 
@@ -113,7 +113,7 @@ public class HelloApplication extends Application {
                             };
                             // Node node = new Node(getNthLetter(i + 1),
                             // ThreadLocalRandom.current().nextInt(50, 100), coordinate, network);
-                            Node node = new Node(getNthLetter(i + 1), 200, newCoordinate, network);
+                            Node node = new Node(getNthLetter(i + 1), newCoordinate, 200, network);
                             nodeList.add(node);
                             drawNodeNew(node, pane);
                         }
@@ -136,10 +136,10 @@ public class HelloApplication extends Application {
                 container.getChildren().add(numberOfNodesHBox);
             } else {
                 System.out.println("HERE!");
-                Node n1 = new Node("A", 50, new double[] { 50, 150 }, network);
-                Node n2 = new Node("B", 50, new double[] { 100, 150 }, network);
-                Node n3 = new Node("C", 50, new double[] { 50, 200 }, network);
-                Node n4 = new Node("D", 50, new double[] { 100, 200 }, network);
+                Node n1 = new Node("A", new double[] { 50, 150 }, 50, network);
+                Node n2 = new Node("B", new double[] { 100, 150 }, 50, network);
+                Node n3 = new Node("C", new double[] { 50, 200 }, 50, network);
+                Node n4 = new Node("D", new double[] { 100, 200 }, 50, network);
 
                 Thread n1Thread = new Thread(n1);
                 Thread n2Thread = new Thread(n2);
@@ -203,7 +203,8 @@ public class HelloApplication extends Application {
                     Node sendNode = nodeList.get(index);
                     Node receiverNode = nodeList.get(receiverIndex);
                     // Get random node in range....
-                    submitTask(sendNode, receiverNode.id, "This is a routing protocol! Amazing!", ThreadLocalRandom.current().nextInt(10, 500));
+                    submitTask(sendNode, receiverNode.id, "This is a routing protocol! Amazing!",
+                            ThreadLocalRandom.current().nextInt(10, 500));
                     try {
                         Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
                     } catch (InterruptedException e) {
@@ -213,28 +214,6 @@ public class HelloApplication extends Application {
             }
         }).start();
     };
-
-    void drawRoute(List<Pair<Node, Node>> routeList) {
-        for (Line l : routeLines) {
-            pane.getChildren().remove(l);
-        }
-        routeLines.clear();
-
-        for (Pair<Node, Node> routePart : routeList) {
-            if (true) {
-                Node origin = routePart.getKey();
-                Node destination = routePart.getValue();
-                System.out.println("Route info: " + origin.coordinate[0] + " " + origin.coordinate[1] + " " + destination.coordinate[0] + " " + destination.coordinate[1]);
-                Line routeLine = new Line(origin.coordinate[0], origin.coordinate[1], destination.coordinate[0], destination.coordinate[1]);
-                routeLine.setStroke(Color.rgb(0, colorCounter%255, colorCounter%255 ));
-                routeLine.setStrokeWidth(3);
-                pane.getChildren().add(routeLine);
-                routeLines.add(routeLine);
-            }
-        }
-        colorCounter++;
-        alreadyDrawn.addAll(routeList);
-    }
 
     public Optional<Node> getRandomNodeInRange(Node sender) {
         List<Node> inRange = nodeList.stream()
@@ -257,10 +236,10 @@ public class HelloApplication extends Application {
             @Override
             public void run() {
                 try {
-                    node.send(receiver, data);
+                    node.sendDSR(receiver, data);
                 } catch (Exception e) {
-//                    e.printStackTrace();
-//                    System.out.println("EXCEPTION");
+                    // e.printStackTrace();
+                    // System.out.println("EXCEPTION");
                     // Reschedule because node was in QUIET state
                     submitTask(node, receiver, data, delay + 200);
                 }
@@ -312,7 +291,7 @@ public class HelloApplication extends Application {
                 Circle range = rangeMap.getOrDefault(lNode.id, new Circle());
                 range.setLayoutX(lNode.coordinate[0]);
                 range.setLayoutY(lNode.coordinate[1]);
-                range.setRadius(lNode.transmissionRange);
+                range.setRadius(lNode.range);
                 range.setFill(Color.TRANSPARENT);
                 range.setStroke(Color.RED);
                 range.setStrokeWidth(1);
@@ -324,7 +303,7 @@ public class HelloApplication extends Application {
 
     void showTransmission(Node n, String message) {
         Duration duration = Duration.seconds(2);
-        int finalRadius = (int) n.transmissionRange;
+        int finalRadius = (int) n.range;
         Circle animationBasis = new Circle();
         animationBasis.setFill(Color.TRANSPARENT);
         animationBasis.setLayoutX(n.coordinate[0]);
@@ -370,15 +349,8 @@ public class HelloApplication extends Application {
     }
 
     void drawNodeNew(Node n, Pane pane) {
-        Circle circle = new Circle();
-        circle.setRadius(5);
-        circle.setFill(Color.RED);
-        circle.setLayoutX(n.coordinate[0]);
-        circle.setLayoutY(n.coordinate[1]);
-        circleMap.put(n.id, circle);
-
         Circle range = new Circle();
-        range.setRadius(n.transmissionRange);
+        range.setRadius(n.range);
         range.setLayoutX(n.coordinate[0]);
         range.setLayoutY(n.coordinate[1]);
         range.setFill(Color.TRANSPARENT);
@@ -386,8 +358,13 @@ public class HelloApplication extends Application {
         range.setStrokeWidth(1);
         rangeMap.put(n.id, range);
 
-        pane.getChildren().add(circle);
+        Text text = new Text();
+        text.setText(n.id);
+        text.setLayoutX(n.coordinate[0] - 4);
+        text.setLayoutY(n.coordinate[1] + 4);
+
         pane.getChildren().add(range);
+        pane.getChildren().add(text);
     }
 
     private void drawCircle(double finalRadius, Node node) {
@@ -418,7 +395,7 @@ public class HelloApplication extends Application {
 
         for (int frame = 0; frame < 100; frame++) {
             Duration frameDuration = Duration.millis((frame * ANIMATION_DURATION.toMillis()) / 100.0);
-            timeline.getKeyFrames().add(new KeyFrame(frameDuration, e -> drawCircle(node.transmissionRange, node)));
+            timeline.getKeyFrames().add(new KeyFrame(frameDuration, e -> drawCircle(node.range, node)));
 
         }
         framecountMap.clear();
@@ -429,7 +406,7 @@ public class HelloApplication extends Application {
     }
 
     EventHandler<ActionEvent> addManualNodeHandler = actionEvent -> {
-        Node node = new Node("Node " + nodeList.size(), 20, new double[] { 200, 200 }, network);
+        Node node = new Node("Node " + nodeList.size(), new double[] { 200, 200 }, 20, network);
         nodeList.add(node);
 
         Object button = actionEvent.getSource();
@@ -448,7 +425,7 @@ public class HelloApplication extends Application {
             if (!newValue.matches("\\d*") && !newValue.equals("")) {
                 transmissionRangeTextField.setText(newValue.replaceAll("\\D", ""));
             } else if (!transmissionRangeTextField.getText().equals("")) {
-                node.transmissionRange = Double.parseDouble(transmissionRangeTextField.getText());
+                node.range = Double.parseDouble(transmissionRangeTextField.getText());
                 updateNodeInList(node);
             }
         });
