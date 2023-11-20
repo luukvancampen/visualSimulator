@@ -13,6 +13,7 @@ public class Network implements Runnable{
     }
 
     HelloApplication visual;
+    private Integer ackCounter = 0;
 
     // TODO deal with broadcast of TD messages, they're for everyone (I think).
 
@@ -54,6 +55,10 @@ public class Network implements Runnable{
                     // Return a deep copy of the object.
                     // TODO think about this, deep copy really necessary? I think so.
                     LinkLayerPacket transmittedPacket = packet.clone();
+                    if (packet.type == PacketType.ACK && packet.macDestination == node.id) {
+                        ackCounter++;
+                        System.out.println("Number of received ACKS " + ackCounter);
+                    }
 //                    System.out.println(node.id + " receives " + packet.type.toString() + " from " + packet.originID);
                     try {
                         Thread.sleep(100);

@@ -228,7 +228,7 @@ public class HelloApplication extends Application {
                         Node r = receiver.get();
                         submitTask(sendNode, r.id, "Hello!", ThreadLocalRandom.current().nextInt(10, 500));
                         try {
-                            Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1000));
+                            Thread.sleep(ThreadLocalRandom.current().nextLong(500, 1500));
                         } catch (InterruptedException e) {
                             throw new RuntimeException(e);
                         }
